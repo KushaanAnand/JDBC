@@ -1,0 +1,161 @@
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+// Student model class
+class Student {
+    private int id;
+    private String name;
+    private String email;
+    
+    public Student() {}
+    
+    public Student(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+    
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    
+    @Override
+    public String toString() {
+        return "Student{id=" + id + ", name='" + name + "', email='" + email + "'}";
+    }
+}
+
+// Database connection utility
+class DatabaseConnection {
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "insert_password";
+    
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USERNAME, PASSWORD);
+    }
+}
+
+// Database operations
+class StudentDAO {
+    
+    public void createTable() {
+        String sql = "CREATE TABLE IF NOT EXISTS students (" +
+                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "name VARCHAR(100) NOT NULL, " +
+                    "email VARCHAR(100) NOT NULL)";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            
+            stmt.executeUpdate(sql);
+            System.out.println("Table 'students' created successfully!");
+            
+        } catch (SQLException e) {
+            System.err.println("Error creating table: " + e.getMessage());
+        }
+    }
+    
+    public void insertStudent(Student student) {
+        String sql = "INSERT INTO students (name, email) VALUES (?, ?)";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, student.getName());
+            pstmt.setString(2, student.getEmail());
+            
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("Inserted " + rowsAffected + " student record");
+            
+        } catch (SQLException e) {
+            System.err.println("Error inserting student: " + e.getMessage());
+        }
+    }
+    
+    public List<Student> getAllStudents() {
+        List<Student> students = new ArrayList<>();
+        String sql = "SELECT id, name, email FROM students";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            while (rs.next()) {
+                Student student = new Student();
+                student.setId(rs.getInt("id"));
+                student.setName(rs.getString("name"));
+                student.setEmail(rs.getString("email"));
+                students.add(student);
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving students: " + e.getMessage());
+        }
+        
+        return students;
+    }
+    
+    public void deleteStudent(int id) {
+        String sql = "DELETE FROM students WHERE id = ?";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, id);
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println("Deleted " + rowsAffected + " student record");
+            
+        } catch (SQLException e) {
+            System.err.println("Error deleting student: " + e.getMessage());
+        }
+    }
+}
+
+// Main class
+public class Prog1 {
+    public static void main(String[] args) {
+        StudentDAO dao = new StudentDAO();
+        
+        System.out.println("=== JDBC MySQL Demo ===\n");
+        
+        // Create table
+        dao.createTable();
+        
+        // Insert sample data
+        System.out.println("\n--- Inserting Students ---");
+        dao.insertStudent(new Student("John Doe", "john@email.com"));
+        dao.insertStudent(new Student("Jane Smith", "jane@email.com"));
+        dao.insertStudent(new Student("Bob Johnson", "bob@email.com"));
+        
+        // Retrieve and display all students
+        System.out.println("\n--- All Students ---");
+        List<Student> students = dao.getAllStudents();
+        
+        if (students.isEmpty()) {
+            System.out.println("No students found.");
+        } else {
+            for (Student student : students) {
+                System.out.println(student);
+            }
+        }
+        
+        // Delete a student (optional)
+        System.out.println("\n--- Deleting Student with ID 2 ---");
+        dao.deleteStudent(2);
+        
+        // Display remaining students
+        System.out.println("\n--- Remaining Students ---");
+        students = dao.getAllStudents();
+        for (Student student : students) {
+            System.out.println(student);
+        }
+        
+        System.out.println("\nDemo completed!");
+    }
+}
